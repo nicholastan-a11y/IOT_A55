@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logs & Configuration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Page-specific structural layout helpers */
+    .logs-container { max-width: 480px; width: 100%; }
+    .logs-box {
+      background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: 8px; padding: 12px; height: 140px; overflow-y: auto;
+      font-family: monospace; font-size: 0.85rem; color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .config-section {
+      background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: 12px; padding: 16px; margin-top: 16px;
+    }
+    .config-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+      font-weight: 600; font-size: 0.9rem;
+    }
+    .config-header svg { color: var(--accent-color); }
+    .btn-outline { background: transparent; border: 1px solid var(--input-border); color: var(--text-main); margin-bottom: 16px; }
+    .btn-outline:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--accent-color); }
+  </style>
+</head>
+<body>
+
+  <div class="card logs-container">
+    <div class="card-header" style="margin-bottom: 16px;">
+      <h2>Logs & Configuration</h2>
+      <p class="subtitle">System history and device parameter settings</p>
+    </div>
+
+    <!-- Logs Section -->
+    <div class="form-group">
+      <label>Logs Detail</label>
+      <button class="btn btn-outline" onclick="selectFilterDate()">Select for Filter Date</button>
+      <div class="logs-box" id="logsOutput">test<br>System initialized successfully...</div>
+    </div>
+
+    <div class="divider"><span>Settings</span></div>
+
+    <!-- Configuration Section -->
+    <div class="config-section">
+      <div class="config-header">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+        <span>Configuration Settings</span>
+      </div>
+      
+      <div class="form-group">
+        <label for="currentVal">Current Value</label>
+        <input type="text" id="currentVal" class="input-field" placeholder="Enter parameter value...">
+      </div>
+
+      <button class="btn btn-primary" onclick="saveConfiguration()">Save Changes</button>
+    </div>
+
+    <div class="btn-group" style="margin-top: 20px;">
+      <button class="btn btn-secondary" onclick="navigateBack()">Back to Dashboard</button>
+    </div>
+  </div>
+
+  <script>
+    function sendToAppInventor(action, data = {}) {
+      const payload = JSON.stringify({ action: action, ...data });
+      if (window.AppInventor) {
+        window.AppInventor.setWebViewString(payload);
+      }
+    }
+
+    function selectFilterDate() {
+      sendToAppInventor("SELECT_DATE");
+    }
+
+    function saveConfiguration() {
+      const val = document.getElementById('currentVal').value;
+      sendToAppInventor("SAVE_CONFIG", { value: val });
+    }
+
+    function navigateBack() {
+      sendToAppInventor("NAVIGATION", { destination: "DASHBOARD" });
+    }
+
+    function appendLog(text) {
+      const box = document.getElementById('logsOutput');
+      box.innerHTML += `<br>${text}`;
+      box.scrollTop = box.scrollHeight;
+    }
+  </script>
+</body>
+</html>
