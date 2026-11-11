@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Login</title>
+  <!-- Google Fonts, Shared Styles & Firebase SDKs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon-wrapper">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+      </div>
+      <h2>Sign In</h2>
+      <p class="subtitle">Access your account using your credentials or social login.</p>
+    </div>
+
+    <!-- Email & Password Form -->
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" class="input-field" placeholder="name@company.com" required>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" class="input-field" placeholder="••••••••" required>
+    </div>
+
+    <button class="btn btn-primary" onclick="loginWithEmail()">Sign In with Email</button>
+
+    <div class="divider">
+      <span>Or continue with</span>
+    </div>
+
+    <!-- SSO Buttons -->
+    <button class="btn btn-google" onclick="loginWithGoogle()">Sign In with Google</button>
+    <button class="btn btn-ms" onclick="loginWithMicrosoft()">Sign In with Microsoft</button>
+
+    <div class="msg" id="statusMsg"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    firebase.initializeApp(firebaseConfig);
+
+    function sendToAppInventor(status, provider, email, uid, token = "") {
+      const payload = JSON.stringify({
+        status: status,
+        provider: provider,
+        email: email,
+        uid: uid,
+        token: token
+      });
+      if (window.AppInventor) {
+        window.AppInventor.setWebViewString(payload);
+      }
+    }
+
+    function showStatus(msg, isError = true) {
+      const el = document.getElementById('statusMsg');
+      el.className = isError ? "msg error-msg" : "msg success-msg";
+      el.innerText = msg;
+    }
+
+    // Unified redirect result handler
+    firebase.auth().getRedirectResult()
+      .then((result) => {
+        if (result && result.user) {
+          const user = result.user;
+          let providerName = "google";
+          if (result.additionalUserInfo && result.additionalUserInfo.providerId) {
+            providerName = result.additionalUserInfo.providerId.includes("microsoft") ? "microsoft" : "google";
+          }
+          
+          setTimeout(() => {
+            sendToAppInventor("SUCCESS", providerName, user.email, user.uid);
+          }, 500);
+        }
+      })
+      .catch((error) => {
+        showStatus(error.message, true);
+        sendToAppInventor("ERROR", "sso", "", "", error.message);
+      });
+
+    // Email & Password Sign-In
+    function loginWithEmail() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showStatus("Please enter both email and password.", true);
+        return;
+      }
+
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          sendToAppInventor("SUCCESS", "password", user.email, user.uid);
+        })
+        .catch((error) => {
+          showStatus(error.message, true);
+          sendToAppInventor("ERROR", "password", "", "", error.message);
+        });
+    }
+
+    // Google SSO Sign-In
+    function loginWithGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithRedirect(provider);
+    }
+
+    // Microsoft SSO Sign-In
+    function loginWithMicrosoft() {
+      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+      firebase.auth().signInWithRedirect(provider);
+    }
+  </script>
+
+</body>
+</html>
