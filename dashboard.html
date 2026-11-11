@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard</title>
+  <title>Dashboard - Pico Monitor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    /* Page-specific structural layout helpers */
     .dashboard-container { max-width: 480px; width: 100%; }
     .info-badge {
       display: flex; justify-content: space-between; font-size: 0.8rem;
@@ -51,88 +53,104 @@
   <div class="card dashboard-container">
     <div class="card-header" style="margin-bottom: 16px;">
       <h2>System Dashboard</h2>
-      <p class="subtitle">Pico Temperature & Gas Monitoring</p>
+      <p class="subtitle">Device: pico_001[cite: 9]</p>
     </div>
 
-    <!-- Location & UID info badge -->
+    <!-- Info Badge -->
     <div class="info-badge">
-      <span>Location: <strong id="locVal">N/A</strong></span>
-      <span>UID: <strong id="uidVal">N/A</strong></span>
+      <span>Device ID: <strong>pico_001</strong>[cite: 9]</span>
+      <span id="timestampVal">Synced: N/A</span>
     </div>
 
-    <!-- Status Toggles -->
+    <!-- DHT11 Status Toggle (matches control/dht11_enabled) -->
     <div class="status-row">
-      <span>DHT11 Status</span>
+      <span>DHT11 Enabled</span>
       <label class="toggle-switch">
-        <input type="checkbox" id="dhtStatus" disabled>
+        <input type="checkbox" id="dhtEnabled" onchange="toggleControl('dht11_enabled', this.checked)">
         <span class="slider"></span>
       </label>
     </div>
 
-    <!-- Metrics Grid -->
+    <!-- Temperature & Humidity Metrics -->
     <div class="metric-grid">
       <div class="metric-card">
-        <div class="metric-label">Temperature</div>
+        <div class="metric-label">Temperature (°C / °F)[cite: 9]</div>
         <div class="metric-value" id="tempVal">N/A</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Humidity</div>
+        <div class="metric-label">Humidity[cite: 9]</div>
         <div class="metric-value" id="humVal">N/A</div>
       </div>
     </div>
 
+    <!-- MQ135 Status Toggle (matches control/mq135_enabled) -->
     <div class="status-row">
-      <span>MQ135 Status</span>
+      <span>MQ135 Enabled</span>
       <label class="toggle-switch">
-        <input type="checkbox" id="mqStatus" disabled>
+        <input type="checkbox" id="mqEnabled" onchange="toggleControl('mq135_enabled', this.checked)">
         <span class="slider"></span>
       </label>
     </div>
 
+    <!-- Gas & Alert Status Grid -->
     <div class="metric-grid">
       <div class="metric-card">
-        <div class="metric-label">Status</div>
-        <div class="metric-value" id="sysStatus" style="font-size: 1rem;">N/A</div>
+        <div class="metric-label">Gas Status[cite: 9]</div>
+        <div class="metric-value" id="gasStatus" style="font-size: 1rem;">N/A</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Alert</div>
-        <div class="metric-value" id="sysAlert" style="font-size: 1rem;">N/A</div>
+        <div class="metric-label">Gas Alert[cite: 9]</div>
+        <div class="metric-value" id="gasAlert" style="font-size: 1rem;">N/A</div>
       </div>
       <div class="metric-card full-width">
-        <div class="metric-label">Alert Status</div>
+        <div class="metric-label">Alert Status[cite: 9]</div>
         <div class="metric-value" id="alertStatus" style="font-size: 1rem;">N/A</div>
       </div>
     </div>
 
-    <!-- Actions -->
+    <!-- Navigation Actions -->
     <div class="btn-group">
       <button class="btn btn-secondary" onclick="navigateAction('LOGS')">Logs & Config</button>
       <button class="btn btn-danger" onclick="navigateAction('LOGOUT')">Logout</button>
     </div>
   </div>
 
+  <script src="config.js"></script>
   <script>
-    function sendToAppInventor(action, data = {}) {
-      const payload = JSON.stringify({ action: action, ...data });
+    firebase.initializeApp(firebaseConfig);
+    const dbRef = firebase.database().ref('devices/pico_001');
+
+    // Real-time listener matching database structure
+    dbRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      // Sensor Status bindings[cite: 9]
+      const status = data.sensor_status || {};
+      document.getElementById('tempVal').innerText = `${status.temperature_c ?? 'N/A'}°C (${status.temperature_f ?? 'N/A'}°F)`;
+      document.getElementById('humVal').innerText = `${status.humidity ?? 'N/A'}%`;
+      document.getElementById('gasStatus').innerText = status.gas_status ?? 'N/A';
+      document.getElementById('gasAlert').innerText = status.gas_alert ? 'ACTIVE' : 'NORMAL';
+      document.getElementById('alertStatus').innerText = status.alert_status ?? 'N/A';
+      document.getElementById('timestampVal').innerText = `Synced: ${status.timestamp ?? 'N/A'}`;
+
+      // Control bindings[cite: 9]
+      const control = data.configuration?.control || {};
+      document.getElementById('dhtEnabled').checked = Boolean(control.dht11_enabled);
+      document.getElementById('mqEnabled').checked = control.mq135_enabled === true || control.mq135_enabled === "true";
+    });
+
+    function toggleControl(key, value) {
+      dbRef.child('configuration/control').update({ [key]: value });
+    }
+
+    function navigateAction(destination) {
       if (window.AppInventor) {
-        window.AppInventor.setWebViewString(payload);
+        window.AppInventor.setWebViewString(JSON.stringify({ action: "NAVIGATION", destination: destination }));
+      } else {
+        if (destination === 'LOGS') window.location.href = 'logs.html';
+        if (destination === 'LOGOUT') window.location.href = 'signin.html';
       }
-    }
-
-    function navigateAction(type) {
-      sendToAppInventor("NAVIGATION", { destination: type });
-    }
-
-    function updateDashboard(data) {
-      if (data.location) document.getElementById('locVal').innerText = data.location;
-      if (data.uid) document.getElementById('uidVal').innerText = data.uid;
-      if (data.dhtActive !== undefined) document.getElementById('dhtStatus').checked = data.dhtActive;
-      if (data.temperature) document.getElementById('tempVal').innerText = data.temperature + "°C";
-      if (data.humidity) document.getElementById('humVal').innerText = data.humidity + "%";
-      if (data.mqActive !== undefined) document.getElementById('mqStatus').checked = data.mqActive;
-      if (data.status) document.getElementById('sysStatus').innerText = data.status;
-      if (data.alert) document.getElementById('sysAlert').innerText = data.alert;
-      if (data.alertStatus) document.getElementById('alertStatus').innerText = data.alertStatus;
     }
   </script>
 </body>
