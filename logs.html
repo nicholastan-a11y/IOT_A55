@@ -3,130 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Logs & Configuration - Pico Monitor</title>
+  <title>Logs & Configuration</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    .logs-container { max-width: 480px; width: 100%; }
-    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .config-section {
-      background: var(--input-bg); border: 1px solid var(--input-border);
-      border-radius: 12px; padding: 16px; margin-top: 14px;
-    }
-    .config-header {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-      font-weight: 600; font-size: 0.9rem; color: var(--accent-color);
-    }
+    .logs-container { max-width: 480px; width: 100%; text-align: center; }
   </style>
 </head>
 <body>
 
   <div class="card logs-container">
-    <div class="card-header" style="margin-bottom: 16px;">
-      <h2>Configuration Settings</h2>
-      <p class="subtitle">Thresholds & Timing Parameters (pico_001)[cite: 9]</p>
-    </div>
-
-    <!-- Thresholds Section -->
-    <div class="config-section">
-      <div class="config-header">Thresholds Parameters[cite: 9]</div>
-      <div class="config-grid">
-        <div class="form-group">
-          <label>Temp Max (°C)[cite: 9]</label>
-          <input type="number" id="tempMax" class="input-field">
-        </div>
-        <div class="form-group">
-          <label>Temp Min (°C)[cite: 9]</label>
-          <input type="number" id="tempMin" class="input-field">
-        </div>
-        <div class="form-group">
-          <label>Humidity Max (%)[cite: 9]</label>
-          <input type="number" id="humMax" class="input-field">
-        </div>
-        <div class="form-group">
-          <label>Humidity Min (%)[cite: 9]</label>
-          <input type="number" id="humMin" class="input-field">
-        </div>
-      </div>
-    </div>
-
-    <!-- Timing Section -->
-    <div class="config-section">
-      <div class="config-header">Timing Parameters[cite: 9]</div>
-      <div class="form-group">
-        <label>Read Interval (sec)[cite: 9]</label>
-        <input type="number" id="readInterval" class="input-field">
-      </div>
-      <div class="form-group">
-        <label>Keep Alive (sec)[cite: 9]</label>
-        <input type="number" id="keepAlive" class="input-field">
-      </div>
-      <div class="form-group">
-        <label>Alert Cooldown (ms)[cite: 9]</label>
-        <input type="number" id="alertCooldown" class="input-field">
-      </div>
-    </div>
-
-    <button class="btn btn-primary" style="margin-top: 16px;" onclick="saveConfigurations()">Save Configurations</button>
-
-    <div class="btn-group" style="margin-top: 16px;">
-      <button class="btn btn-secondary" onclick="navigateBack()">Back to Dashboard</button>
+    <div class="card-header" style="margin-bottom: 12px;">
+      <h2>Logs & Configuration</h2>
+      <p class="subtitle">System overview. Use app controls to navigate.</p>
     </div>
   </div>
 
-  <script src="config.js"></script>
   <script>
-    firebase.initializeApp(firebaseConfig);
-    const configRef = firebase.database().ref('devices/pico_001/configuration');
-
-    // Load initial configuration values into inputs
-    configRef.once('value', (snapshot) => {
-      const config = snapshot.val();
-      if (!config) return;
-
-      // Thresholds[cite: 9]
-      document.getElementById('tempMax').value = config.thresholds?.temperature_max ?? '';
-      document.getElementById('tempMin').value = config.thresholds?.temperature_min ?? '';
-      document.getElementById('humMax').value = config.thresholds?.humidity_max ?? '';
-      document.getElementById('humMin').value = config.thresholds?.humidity_min ?? '';
-
-      // Timing[cite: 9]
-      document.getElementById('readInterval').value = config.timing?.read_interval_sec ?? '';
-      document.getElementById('keepAlive').value = config.timing?.keep_alive_sec ?? '';
-      document.getElementById('alertCooldown').value = config.timing?.immediate_alert_cooldown ?? '';
-    });
-
-    function saveConfigurations() {
-      const updatedConfig = {
-        thresholds: {
-          temperature_max: Number(document.getElementById('tempMax').value),
-          temperature_min: Number(document.getElementById('tempMin').value),
-          humidity_max: Number(document.getElementById('humMax').value),
-          humidity_min: Number(document.getElementById('humMin').value)
-        },
-        timing: {
-          read_interval_sec: Number(document.getElementById('readInterval').value),
-          keep_alive_sec: Number(document.getElementById('keepAlive').value),
-          immediate_alert_cooldown: Number(document.getElementById('alertCooldown').value)
-        }
-      };
-
-      configRef.update(updatedConfig)
-        .then(() => alert("Configuration updated successfully in Firebase!"))
-        .catch((error) => alert("Error updating configuration: " + error.message));
+    // Sends actions/data back to App Inventor via WebViewer string
+    function sendToAppInventor(action, data = {}) {
+      const payload = JSON.stringify({ action: action, ...data });
+      if (window.AppInventor) {
+        window.AppInventor.setWebViewString(payload);
+      }
     }
 
-    function navigateBack() {
-      if (window.AppInventor) {
-        window.AppInventor.setWebViewString(JSON.stringify({ action: "NAVIGATION", destination: "DASHBOARD" }));
-      } else {
-        window.location.href = 'dashboard.html';
-      }
+    // This function can be called from App Inventor if needed
+    function notifyLogsLoaded() {
+      sendToAppInventor("LOGS_READY");
     }
   </script>
 </body>
