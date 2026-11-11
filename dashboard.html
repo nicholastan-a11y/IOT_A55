@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Page-specific structural layout helpers */
+    .dashboard-container { max-width: 480px; width: 100%; }
+    .info-badge {
+      display: flex; justify-content: space-between; font-size: 0.8rem;
+      color: var(--text-muted); background: var(--input-bg);
+      padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
+      border: 1px solid var(--input-border);
+    }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .metric-card { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; padding: 16px; text-align: center; }
+    .metric-card.full-width { grid-column: span 2; }
+    .metric-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; }
+    .metric-value { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
+    .status-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: 10px; padding: 12px 16px; margin-bottom: 12px;
+    }
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--input-border); transition: .3s; border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white; transition: .3s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--accent-color); }
+    input:checked + .slider:before { transform: translateX(20px); }
+    .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-secondary { background-color: rgba(148, 163, 184, 0.15); color: var(--text-main); }
+    .btn-secondary:hover { background-color: rgba(148, 163, 184, 0.25); }
+    .btn-danger { background-color: rgba(248, 113, 113, 0.15); color: var(--error-color); }
+    .btn-danger:hover { background-color: rgba(248, 113, 113, 0.25); }
+  </style>
+</head>
+<body>
+
+  <div class="card dashboard-container">
+    <div class="card-header" style="margin-bottom: 16px;">
+      <h2>System Dashboard</h2>
+      <p class="subtitle">Pico Temperature & Gas Monitoring</p>
+    </div>
+
+    <!-- Location & UID info badge -->
+    <div class="info-badge">
+      <span>Location: <strong id="locVal">N/A</strong></span>
+      <span>UID: <strong id="uidVal">N/A</strong></span>
+    </div>
+
+    <!-- Status Toggles -->
+    <div class="status-row">
+      <span>DHT11 Status</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="dhtStatus" disabled>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Temperature</div>
+        <div class="metric-value" id="tempVal">N/A</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Humidity</div>
+        <div class="metric-value" id="humVal">N/A</div>
+      </div>
+    </div>
+
+    <div class="status-row">
+      <span>MQ135 Status</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="mqStatus" disabled>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Status</div>
+        <div class="metric-value" id="sysStatus" style="font-size: 1rem;">N/A</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Alert</div>
+        <div class="metric-value" id="sysAlert" style="font-size: 1rem;">N/A</div>
+      </div>
+      <div class="metric-card full-width">
+        <div class="metric-label">Alert Status</div>
+        <div class="metric-value" id="alertStatus" style="font-size: 1rem;">N/A</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="navigateAction('LOGS')">Logs & Config</button>
+      <button class="btn btn-danger" onclick="navigateAction('LOGOUT')">Logout</button>
+    </div>
+  </div>
+
+  <script>
+    function sendToAppInventor(action, data = {}) {
+      const payload = JSON.stringify({ action: action, ...data });
+      if (window.AppInventor) {
+        window.AppInventor.setWebViewString(payload);
+      }
+    }
+
+    function navigateAction(type) {
+      sendToAppInventor("NAVIGATION", { destination: type });
+    }
+
+    function updateDashboard(data) {
+      if (data.location) document.getElementById('locVal').innerText = data.location;
+      if (data.uid) document.getElementById('uidVal').innerText = data.uid;
+      if (data.dhtActive !== undefined) document.getElementById('dhtStatus').checked = data.dhtActive;
+      if (data.temperature) document.getElementById('tempVal').innerText = data.temperature + "°C";
+      if (data.humidity) document.getElementById('humVal').innerText = data.humidity + "%";
+      if (data.mqActive !== undefined) document.getElementById('mqStatus').checked = data.mqActive;
+      if (data.status) document.getElementById('sysStatus').innerText = data.status;
+      if (data.alert) document.getElementById('sysAlert').innerText = data.alert;
+      if (data.alertStatus) document.getElementById('alertStatus').innerText = data.alertStatus;
+    }
+  </script>
+</body>
+</html>
