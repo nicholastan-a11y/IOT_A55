@@ -3,95 +3,130 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Logs & Configuration</title>
+  <title>Logs & Configuration - Pico Monitor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    /* Page-specific structural layout helpers */
     .logs-container { max-width: 480px; width: 100%; }
-    .logs-box {
-      background: var(--input-bg); border: 1px solid var(--input-border);
-      border-radius: 8px; padding: 12px; height: 140px; overflow-y: auto;
-      font-family: monospace; font-size: 0.85rem; color: var(--text-muted);
-      margin-bottom: 16px;
-    }
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .config-section {
       background: var(--input-bg); border: 1px solid var(--input-border);
-      border-radius: 12px; padding: 16px; margin-top: 16px;
+      border-radius: 12px; padding: 16px; margin-top: 14px;
     }
     .config-header {
       display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-      font-weight: 600; font-size: 0.9rem;
+      font-weight: 600; font-size: 0.9rem; color: var(--accent-color);
     }
-    .config-header svg { color: var(--accent-color); }
-    .btn-outline { background: transparent; border: 1px solid var(--input-border); color: var(--text-main); margin-bottom: 16px; }
-    .btn-outline:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--accent-color); }
   </style>
 </head>
 <body>
 
   <div class="card logs-container">
     <div class="card-header" style="margin-bottom: 16px;">
-      <h2>Logs & Configuration</h2>
-      <p class="subtitle">System history and device parameter settings</p>
+      <h2>Configuration Settings</h2>
+      <p class="subtitle">Thresholds & Timing Parameters (pico_001)[cite: 9]</p>
     </div>
 
-    <!-- Logs Section -->
-    <div class="form-group">
-      <label>Logs Detail</label>
-      <button class="btn btn-outline" onclick="selectFilterDate()">Select for Filter Date</button>
-      <div class="logs-box" id="logsOutput">test<br>System initialized successfully...</div>
-    </div>
-
-    <div class="divider"><span>Settings</span></div>
-
-    <!-- Configuration Section -->
+    <!-- Thresholds Section -->
     <div class="config-section">
-      <div class="config-header">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-        <span>Configuration Settings</span>
+      <div class="config-header">Thresholds Parameters[cite: 9]</div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label>Temp Max (°C)[cite: 9]</label>
+          <input type="number" id="tempMax" class="input-field">
+        </div>
+        <div class="form-group">
+          <label>Temp Min (°C)[cite: 9]</label>
+          <input type="number" id="tempMin" class="input-field">
+        </div>
+        <div class="form-group">
+          <label>Humidity Max (%)[cite: 9]</label>
+          <input type="number" id="humMax" class="input-field">
+        </div>
+        <div class="form-group">
+          <label>Humidity Min (%)[cite: 9]</label>
+          <input type="number" id="humMin" class="input-field">
+        </div>
       </div>
-      
-      <div class="form-group">
-        <label for="currentVal">Current Value</label>
-        <input type="text" id="currentVal" class="input-field" placeholder="Enter parameter value...">
-      </div>
-
-      <button class="btn btn-primary" onclick="saveConfiguration()">Save Changes</button>
     </div>
 
-    <div class="btn-group" style="margin-top: 20px;">
+    <!-- Timing Section -->
+    <div class="config-section">
+      <div class="config-header">Timing Parameters[cite: 9]</div>
+      <div class="form-group">
+        <label>Read Interval (sec)[cite: 9]</label>
+        <input type="number" id="readInterval" class="input-field">
+      </div>
+      <div class="form-group">
+        <label>Keep Alive (sec)[cite: 9]</label>
+        <input type="number" id="keepAlive" class="input-field">
+      </div>
+      <div class="form-group">
+        <label>Alert Cooldown (ms)[cite: 9]</label>
+        <input type="number" id="alertCooldown" class="input-field">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top: 16px;" onclick="saveConfigurations()">Save Configurations</button>
+
+    <div class="btn-group" style="margin-top: 16px;">
       <button class="btn btn-secondary" onclick="navigateBack()">Back to Dashboard</button>
     </div>
   </div>
 
+  <script src="config.js"></script>
   <script>
-    function sendToAppInventor(action, data = {}) {
-      const payload = JSON.stringify({ action: action, ...data });
-      if (window.AppInventor) {
-        window.AppInventor.setWebViewString(payload);
-      }
-    }
+    firebase.initializeApp(firebaseConfig);
+    const configRef = firebase.database().ref('devices/pico_001/configuration');
 
-    function selectFilterDate() {
-      sendToAppInventor("SELECT_DATE");
-    }
+    // Load initial configuration values into inputs
+    configRef.once('value', (snapshot) => {
+      const config = snapshot.val();
+      if (!config) return;
 
-    function saveConfiguration() {
-      const val = document.getElementById('currentVal').value;
-      sendToAppInventor("SAVE_CONFIG", { value: val });
+      // Thresholds[cite: 9]
+      document.getElementById('tempMax').value = config.thresholds?.temperature_max ?? '';
+      document.getElementById('tempMin').value = config.thresholds?.temperature_min ?? '';
+      document.getElementById('humMax').value = config.thresholds?.humidity_max ?? '';
+      document.getElementById('humMin').value = config.thresholds?.humidity_min ?? '';
+
+      // Timing[cite: 9]
+      document.getElementById('readInterval').value = config.timing?.read_interval_sec ?? '';
+      document.getElementById('keepAlive').value = config.timing?.keep_alive_sec ?? '';
+      document.getElementById('alertCooldown').value = config.timing?.immediate_alert_cooldown ?? '';
+    });
+
+    function saveConfigurations() {
+      const updatedConfig = {
+        thresholds: {
+          temperature_max: Number(document.getElementById('tempMax').value),
+          temperature_min: Number(document.getElementById('tempMin').value),
+          humidity_max: Number(document.getElementById('humMax').value),
+          humidity_min: Number(document.getElementById('humMin').value)
+        },
+        timing: {
+          read_interval_sec: Number(document.getElementById('readInterval').value),
+          keep_alive_sec: Number(document.getElementById('keepAlive').value),
+          immediate_alert_cooldown: Number(document.getElementById('alertCooldown').value)
+        }
+      };
+
+      configRef.update(updatedConfig)
+        .then(() => alert("Configuration updated successfully in Firebase!"))
+        .catch((error) => alert("Error updating configuration: " + error.message));
     }
 
     function navigateBack() {
-      sendToAppInventor("NAVIGATION", { destination: "DASHBOARD" });
-    }
-
-    function appendLog(text) {
-      const box = document.getElementById('logsOutput');
-      box.innerHTML += `<br>${text}`;
-      box.scrollTop = box.scrollHeight;
+      if (window.AppInventor) {
+        window.AppInventor.setWebViewString(JSON.stringify({ action: "NAVIGATION", destination: "DASHBOARD" }));
+      } else {
+        window.location.href = 'dashboard.html';
+      }
     }
   </script>
 </body>
