@@ -47,7 +47,7 @@
     <div class="msg" id="statusMsg"></div>
   </div>
 
-  <script src="config.js"></script>
+ <script src="config.js"></script>
   <script>
     firebase.initializeApp(firebaseConfig);
 
@@ -70,7 +70,7 @@
       el.innerText = msg;
     }
 
-    // Unified redirect result handler
+    // 1. Unified redirect result handler (Google & Microsoft SSO)
     firebase.auth().getRedirectResult()
       .then((result) => {
         if (result && result.user) {
@@ -80,9 +80,12 @@
             providerName = result.additionalUserInfo.providerId.includes("microsoft") ? "microsoft" : "google";
           }
           
-          setTimeout(() => {
-            sendToAppInventor("SUCCESS", providerName, user.email, user.uid);
-          }, 500);
+          // Fetch the ID Token before sending to App Inventor
+          user.getIdToken().then((idToken) => {
+            setTimeout(() => {
+              sendToAppInventor("SUCCESS", providerName, user.email, user.uid, idToken);
+            }, 500);
+          });
         }
       })
       .catch((error) => {
@@ -90,7 +93,7 @@
         sendToAppInventor("ERROR", "sso", "", "", error.message);
       });
 
-    // Email & Password Sign-In
+    // 2. Email & Password Sign-In
     function loginWithEmail() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
@@ -103,7 +106,10 @@
       firebase.auth().signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
           const user = userCredential.user;
-          sendToAppInventor("SUCCESS", "password", user.email, user.uid);
+          // Fetch the ID Token before sending to App Inventor
+          user.getIdToken().then((idToken) => {
+            sendToAppInventor("SUCCESS", "password", user.email, user.uid, idToken);
+          });
         })
         .catch((error) => {
           showStatus(error.message, true);
@@ -111,13 +117,13 @@
         });
     }
 
-    // Google SSO Sign-In
+    // 3. Google SSO Sign-In
     function loginWithGoogle() {
       const provider = new firebase.auth.GoogleAuthProvider();
       firebase.auth().signInWithRedirect(provider);
     }
 
-    // Microsoft SSO Sign-In
+    // 4. Microsoft SSO Sign-In
     function loginWithMicrosoft() {
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
       firebase.auth().signInWithRedirect(provider);
