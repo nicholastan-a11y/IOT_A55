@@ -85,7 +85,7 @@
             setTimeout(() => {
               sendToAppInventor("SUCCESS", providerName, user.email, user.uid, idToken);
             }, 500);
-          window.location.href = "dashboard.html";
+          window.location.href = "https://nicholastan-a11y.github.io/IOT_A55/dashboard.html";
           });
         }
       })
@@ -110,7 +110,7 @@
           // Fetch the ID Token before sending to App Inventor
           user.getIdToken().then((idToken) => {
             sendToAppInventor("SUCCESS", "password", user.email, user.uid, idToken);
-            window.location.href = "dashboard.html";
+            window.location.href = "https://nicholastan-a11y.github.io/IOT_A55/dashboard.html";
           });
         })
         .catch((error) => {
