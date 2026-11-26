@@ -85,6 +85,7 @@
             setTimeout(() => {
               sendToAppInventor("SUCCESS", providerName, user.email, user.uid, idToken);
             }, 500);
+          window.location.href = "dashboard.html";
           });
         }
       })
@@ -109,6 +110,7 @@
           // Fetch the ID Token before sending to App Inventor
           user.getIdToken().then((idToken) => {
             sendToAppInventor("SUCCESS", "password", user.email, user.uid, idToken);
+            window.location.href = "dashboard.html";
           });
         })
         .catch((error) => {
